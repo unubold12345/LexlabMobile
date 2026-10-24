@@ -32,31 +32,31 @@ The date-based IDs below remain the implementation record. This table is a retro
 
 ## Versions (newest first)
 
-### v2026.10.23.11 — Product version bump policy — UNCOMMITTED
+### v2026.10.23.11 — Product version bump policy — PUSHED `d5ac2eb`
 
 **Date:** 2026-10-23 · **Product version after:** 0.9.0 (unchanged)
 
 - Documented the bump policy in `RULES.md`: a big implementation increases the product version by 0.1; fixes and small additions increase it by 0.01 (one patch step). The AI agent judges scope and prefers the smaller bump when unsure.
 - Current product maturity remains **0.9.0** until the next product-changing batch.
-- Documentation only; no typecheck/export changes. No commit/push.
+- Documentation only; no typecheck/export changes. Pushed in `d5ac2eb`.
 
-### v2026.10.23.10 — Retrospective product-version judgment — UNCOMMITTED
+### v2026.10.23.10 — Retrospective product-version judgment — PUSHED `d5ac2eb`
 
 **Date:** 2026-10-23 · **Product version after:** 0.9.0 (unchanged)
 
 - Added the retrospective product-version table above, mapping every earlier implementation batch to an effective product version from 0.1.0 through the current release candidate 0.9.0.
 - The date-based implementation IDs remain the source of truth; the product versions are judgments of maturity, not historical release tags.
-- No code, typecheck or export changes; documentation only. No commit/push.
+- No code, typecheck or export changes; documentation only. Pushed in `d5ac2eb`.
 
-### v2026.10.23.9 — Versioning documentation — UNCOMMITTED
+### v2026.10.23.9 — Versioning documentation — PUSHED `d5ac2eb`
 
 **Date:** 2026-10-23
 
 - Added `VERSION.md` covering the full mobile implementation history.
 - Added `RULES.md` with the versioning rule, client/backend boundary, verification commands, UTF-8 guidance and commit policy.
-- Verification: documentation only; no typecheck/export needed. No commit/push.
+- Verification: documentation only; no typecheck/export needed. Pushed in `d5ac2eb`.
 
-### v2026.10.23.8 — Category pickers start minimized — UNCOMMITTED
+### v2026.10.23.8 — Category pickers start minimized — PUSHED `ffe9c7a`
 
 **Date:** 2026-10-23
 
@@ -64,7 +64,7 @@ The date-based IDs below remain the implementation record. This table is a retro
 - `SubjectPickerSheet.tsx` (Plan add, Exam Setup main/sub pickers): clears search/expanded state when the sheet closes, defaults all groups closed, and toggles against the computed open state.
 - Verification: `npx tsc --noEmit` clean; web export green; Playwright at 1024x768 with a mocked two-category bank confirmed initial collapsed, open, stay closed, and reset-on-reopen in Custom, Plan, Exam Setup and the subcategory-exam picker.
 
-### v2026.10.23.7 — Drill categories start minimized — UNCOMMITTED
+### v2026.10.23.7 — Drill categories start minimized — PUSHED `ffe9c7a`
 
 **Date:** 2026-10-23
 
@@ -72,7 +72,7 @@ The date-based IDs below remain the implementation record. This table is a retro
 - All main categories load collapsed; each toggles independently; search still expands matching groups.
 - Verification: `npx tsc --noEmit` clean; web export green; Playwright at 1024x768 confirmed initial collapsed state, open, stay closed, and independent toggles.
 
-### v2026.10.23.6 — Shared question-grid navigator — UNCOMMITTED
+### v2026.10.23.6 — Shared question-grid navigator — PUSHED `ffe9c7a`
 
 **Date:** 2026-10-23
 
@@ -82,7 +82,7 @@ The date-based IDs below remain the implementation record. This table is a retro
 - Fixed the collapsed «narrow pill» cells caused by `PressableScale` shrinking inside a centered parent; cells now use explicit widths and full-width content.
 - Verification: `npx tsc --noEmit` clean; web/Android exports green; Playwright at 1024x768 and 390x844 confirmed 80x40 / 57x36 cells, Browse jump, Quiz jump, and 300-question auto-scroll.
 
-### v2026.10.23.5 — Question-count slider and jump — UNCOMMITTED
+### v2026.10.23.5 — Question-count slider and jump — PUSHED `ffe9c7a`
 
 **Date:** 2026-10-23
 
@@ -92,7 +92,7 @@ The date-based IDs below remain the implementation record. This table is a retro
 - Browse originally gained a numeric jump field; it was superseded by the grid picker above.
 - Verification: `npx tsc --noEmit` clean; web/Android exports green; Playwright with a mocked 48-question subcategory confirmed slider 0/11/48, disabled start at 0, start of 48 → `1 / 48`, and Browse jump to 40.
 
-### v2026.10.23.4 — Tablet and large-tablet responsive layout — UNCOMMITTED
+### v2026.10.23.4 — Tablet and large-tablet responsive layout — PUSHED `ffe9c7a`
 
 **Date:** 2026-10-23
 
