@@ -19,10 +19,12 @@ import { LogoMark } from "@/components/LogoMark";
 import { PressableScale, Reveal } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { API_BASE } from "@/lib/api";
+import { useResponsive } from "@/lib/responsive";
 import { colors, fonts, radii } from "@/lib/theme";
 
 export default function Login() {
   const auth = useAuth();
+  const { isTablet } = useResponsive();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -75,7 +77,8 @@ export default function Login() {
       keyboardVerticalOffset={0}
     >
       <Screen contentStyle={styles.content}>
-        <View style={styles.topBar}>
+        <View style={[styles.formColumn, isTablet && styles.formColumnTablet]}>
+          <View style={styles.topBar}>
           <PressableScale onPress={close} scaleTo={0.9} style={styles.closeButton}>
             <View style={styles.closeInner}>
               <Icon name="close" size={17} color={colors.muted} />
@@ -88,11 +91,11 @@ export default function Login() {
         </View>
 
         <Reveal delay={40}>
-          <View style={styles.hero}>
+          <View style={[styles.hero, isTablet && styles.heroTablet]}>
             <LogoMark size={58} />
             <Text style={styles.kicker}>LEXLAB ACCOUNT</Text>
-            <Text style={styles.title}>Суралцах замаа{"\n"}үргэлжлүүлээрэй.</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, isTablet && styles.titleTablet]}>Суралцах замаа{"\n"}үргэлжлүүлээрэй.</Text>
+            <Text style={[styles.subtitle, isTablet && styles.subtitleTablet]}>
               Нэвтэрснээр бүх асуулт, явц, алдааны түүх таны бүх төхөөрөмж дээр хадгалагдана.
             </Text>
           </View>
@@ -107,7 +110,7 @@ export default function Login() {
         </Reveal>
 
         <Reveal delay={170}>
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, isTablet && styles.formCardTablet]}>
             <View pointerEvents="none" style={styles.sheen} />
 
             <Text style={styles.label}>УТАСНЫ ДУГААР</Text>
@@ -217,6 +220,7 @@ export default function Login() {
         <Text style={styles.footer}>
           Үргэлжлүүлснээр та Lexlab-ийн үйлчилгээний нөхцөл болон нууцлалын журмыг хүлээн зөвшөөрнө.
         </Text>
+        </View>
       </Screen>
     </KeyboardAvoidingView>
   );
@@ -234,6 +238,8 @@ function Benefit({ icon, text }: { icon: "layers" | "trending" | "target"; text:
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingBottom: 48 },
+  formColumn: { width: "100%", maxWidth: 520, alignSelf: "center" },
+  formColumnTablet: { maxWidth: 620 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   closeButton: {},
   closeInner: {
@@ -259,6 +265,7 @@ const styles = StyleSheet.create({
   },
   secureText: { fontFamily: fonts.bodyBold, fontSize: 8.5, letterSpacing: 1.1, color: colors.emerald },
   hero: { alignItems: "center", marginTop: 34 },
+  heroTablet: { marginTop: 48 },
   kicker: {
     fontFamily: fonts.bodyBold,
     fontSize: 9.5,
@@ -276,6 +283,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 11,
   },
+  titleTablet: { fontSize: 34, lineHeight: 43 },
   subtitle: {
     fontFamily: fonts.body,
     fontSize: 12.8,
@@ -285,6 +293,7 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     marginTop: 10,
   },
+  subtitleTablet: { fontSize: 14, lineHeight: 21, maxWidth: 420 },
   benefits: { flexDirection: "row", justifyContent: "center", gap: 7, marginTop: 22, flexWrap: "wrap" },
   benefit: {
     flexDirection: "row",
@@ -307,6 +316,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     overflow: "hidden",
   },
+  formCardTablet: { padding: 26, marginTop: 32 },
   sheen: {
     position: "absolute",
     top: 0,

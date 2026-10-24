@@ -5,11 +5,13 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
+import { QuestionGridModal } from "@/components/QuestionGridModal";
 import { QuizOption, OptionState } from "@/components/QuizOption";
 import { SubjectPickerSheet } from "@/components/SubjectPickerSheet";
 import { PressableScale, Tag } from "@/components/ui";
 import { useBank } from "@/lib/bank";
 import { useProgress } from "@/lib/progress";
+import { useResponsive } from "@/lib/responsive";
 import { colors, fonts, radii } from "@/lib/theme";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
@@ -30,6 +32,7 @@ export default function Browse() {
   const params = useLocalSearchParams<{ main?: string; sub?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { gutter, maxContentWidth, isTablet } = useResponsive();
   const bank = useBank();
   const progress = useProgress();
 
@@ -43,6 +46,7 @@ export default function Browse() {
 
   const [scope, setScope] = useState({ main: paramMain, sub: paramSub });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [gridOpen, setGridOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -117,14 +121,15 @@ export default function Browse() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.column, { maxWidth: maxContentWidth }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, paddingHorizontal: gutter }]}>
         <PressableScale onPress={leave} scaleTo={0.92} accessibilityLabel="Буцах">
           <View style={styles.iconBtn}>
             <Icon name="arrowLeft" size={18} color={colors.muted} />
           </View>
         </PressableScale>
         <View style={styles.headerCenter}>
-          <Text numberOfLines={1} style={styles.headerScope}>
+          <Text numberOfLines={1} style={[styles.headerScope, isTablet && styles.headerScopeTablet]}>
             {title}
           </Text>
         </View>
@@ -142,7 +147,7 @@ export default function Browse() {
         </View>
       </View>
 
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { marginHorizontal: gutter }]}>
         <PressableScale
           onPress={() => go(safeIndex - 1)}
           disabled={safeIndex === 0}
@@ -153,11 +158,17 @@ export default function Browse() {
           <Icon name="chevronLeft" size={14} color={safeIndex === 0 ? colors.dim : colors.muted} />
           <Text style={[styles.navText, safeIndex === 0 && styles.navTextDisabled]}>Өмнөх</Text>
         </PressableScale>
-        <View style={styles.navCountWrap}>
-          <Text style={styles.navCount}>
-            {safeIndex + 1} <Text style={styles.navCountDim}>/ {list.length}</Text>
-          </Text>
-        </View>
+        <PressableScale
+          onPress={() => setGridOpen(true)}
+          scaleTo={0.96}
+          style={styles.navCountWrap}
+          contentStyle={styles.navCountContent}
+          accessibilityLabel="Бүх асуултын жагсаалт"
+        >
+          <Icon name="grid" size={12} color={colors.dim} />
+          <Text style={styles.navCount}>{safeIndex + 1}</Text>
+          <Text style={styles.navCountDim}>/ {list.length.toLocaleString()}</Text>
+        </PressableScale>
         <PressableScale
           onPress={() => go(safeIndex + 1)}
           disabled={isLast}
@@ -173,12 +184,16 @@ export default function Browse() {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 34 }]}
+        contentContainerStyle={[styles.scroll, { paddingHorizontal: gutter, paddingBottom: insets.bottom + 34 }]}
       >
-        <Animated.View key={`${current.id}-${safeIndex}`} entering={FadeInDown.duration(340)} style={styles.card}>
+        <Animated.View
+          key={`${current.id}-${safeIndex}`}
+          entering={FadeInDown.duration(340)}
+          style={[styles.card, isTablet && styles.cardTablet]}
+        >
           <View style={styles.questionHead}>
             <Text style={styles.questionNumber}>{safeIndex + 1}.</Text>
-            <Text style={styles.question}>{current.question}</Text>
+            <Text style={[styles.question, isTablet && styles.questionTablet]}>{current.question}</Text>
           </View>
 
           <View style={styles.metaRow}>
@@ -236,6 +251,20 @@ export default function Browse() {
           ) : null}
         </Animated.View>
       </ScrollView>
+      </View>
+
+      <QuestionGridModal
+        visible={gridOpen}
+        onClose={() => setGridOpen(false)}
+        title="Бүх асуулт"
+        meta={`${title} · ${safeIndex + 1} / ${list.length}`}
+        total={list.length}
+        currentIndex={safeIndex}
+        onSelect={(next) => {
+          go(next);
+          setGridOpen(false);
+        }}
+      />
 
       <SubjectPickerSheet
         visible={pickerOpen}
@@ -248,6 +277,7 @@ export default function Browse() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  column: { flex: 1, width: "100%", alignSelf: "center" },
   emptyRoot: { alignItems: "center", justifyContent: "center", padding: 32 },
   emptyTitle: { fontFamily: fonts.display, fontSize: 20, color: colors.text, marginTop: 14 },
   emptyText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.muted, marginTop: 6, textAlign: "center" },
@@ -256,6 +286,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, gap: 9 },
   headerCenter: { flex: 1, alignItems: "center" },
   headerScope: { maxWidth: 200, fontFamily: fonts.displayMedium, fontSize: 13, color: colors.text },
+  headerScopeTablet: { maxWidth: 420, fontSize: 15 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 6 },
   iconBtn: { width: 38, height: 38, borderRadius: 13, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.borderSoft, alignItems: "center", justifyContent: "center" },
   iconBtnActive: { borderColor: "rgba(255,255,255,0.24)", backgroundColor: "rgba(255,255,255,0.09)" },
@@ -265,14 +296,17 @@ const styles = StyleSheet.create({
   navDisabled: { opacity: 0.4 },
   navText: { fontFamily: fonts.bodySemi, fontSize: 10.5, color: colors.muted },
   navTextDisabled: { color: colors.dim },
-  navCountWrap: { width: 84, alignItems: "center" },
+  navCountWrap: { width: 112, height: 36, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.045)", overflow: "hidden" },
+  navCountContent: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, width: "100%" },
   navCount: { fontFamily: fonts.display, fontSize: 13, color: colors.text },
   navCountDim: { fontFamily: fonts.bodySemi, fontSize: 10, color: colors.dim },
   scroll: { paddingHorizontal: 20, paddingTop: 14 },
   card: { borderRadius: 22, borderWidth: 1, borderColor: colors.borderSoft, backgroundColor: "rgba(255,255,255,0.032)", padding: 17 },
+  cardTablet: { padding: 24, maxWidth: 840, width: "100%", alignSelf: "center" },
   questionHead: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   questionNumber: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.dim, marginTop: 2 },
   question: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 16, lineHeight: 23, color: colors.text },
+  questionTablet: { fontSize: 18, lineHeight: 27 },
   metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 14 },
   difficulty: { fontFamily: fonts.body, fontSize: 10, color: colors.dim, textTransform: "capitalize" },
   cardActions: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 16 },

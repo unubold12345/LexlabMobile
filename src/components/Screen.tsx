@@ -2,6 +2,7 @@ import React from "react";
 import { RefreshControl, ScrollView, StyleSheet, View, ViewStyle, StyleProp } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Aurora } from "@/components/Aurora";
+import { useResponsive } from "@/lib/responsive";
 import { colors } from "@/lib/theme";
 
 export function Screen({
@@ -18,11 +19,14 @@ export function Screen({
   onRefresh?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { gutter, maxContentWidth } = useResponsive();
   if (!scroll) {
     return (
       <View style={styles.root}>
         <Aurora />
-        <View style={{ flex: 1, paddingTop: insets.top + 6 }}>{children}</View>
+        <View style={[styles.column, { maxWidth: maxContentWidth }]}>
+          <View style={{ flex: 1, paddingTop: insets.top + 6 }}>{children}</View>
+        </View>
       </View>
     );
   }
@@ -34,7 +38,6 @@ export function Screen({
         contentContainerStyle={[
           {
             paddingTop: insets.top + 6,
-            paddingHorizontal: 20,
             paddingBottom: insets.bottom + 132,
           },
           contentStyle,
@@ -45,7 +48,9 @@ export function Screen({
           ) : undefined
         }
       >
-        {children}
+        <View style={[styles.scrollColumn, { maxWidth: maxContentWidth, paddingHorizontal: gutter }]}>
+          {children}
+        </View>
       </ScrollView>
     </View>
   );
@@ -53,4 +58,6 @@ export function Screen({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  column: { flex: 1, width: "100%", alignSelf: "center" },
+  scrollColumn: { width: "100%", alignSelf: "center" },
 });

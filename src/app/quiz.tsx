@@ -5,11 +5,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Icon } from "@/components/Icon";
+import { QuestionGridModal } from "@/components/QuestionGridModal";
 import { QuizOption, OptionState } from "@/components/QuizOption";
 import { PressableScale, ProgressBar, Tag } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useBank } from "@/lib/bank";
 import { useProgress } from "@/lib/progress";
+import { useResponsive } from "@/lib/responsive";
 import { useSavedExams, getSavedExamLocal, type SavedExam } from "@/lib/savedExams";
 import { buildOptionOrder, createLaunch, readLaunch, shuffle, updateLaunch, type QuizLaunch } from "@/lib/quizLaunch";
 import { clock } from "@/lib/format";
@@ -52,6 +54,8 @@ type Boot = {
 export default function Quiz() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { gutter, maxContentWidth, isTablet } = useResponsive();
+  const readingMaxWidth = Math.min(maxContentWidth, 860);
   const auth = useAuth();
   const bank = useBank();
   const progress = useProgress();
@@ -161,7 +165,7 @@ export default function Quiz() {
         const mainParam = one(params.main) ?? "all";
         const subParam = one(params.sub) ?? "";
         const source = one(params.source);
-        const count = clampInt(one(params.count), 10, 1, 300);
+        const count = clampInt(one(params.count), 10, 1, Math.max(1, bank.questions.length));
         mode = one(params.mode) === "exam" ? "exam" : "practice";
 
         let pool: BankQuestion[];
@@ -417,15 +421,13 @@ export default function Quiz() {
     }
   };
 
-  const nav = useMemo(() => {
-    const items = questions.map((q, i) => ({
-      id: q.id,
-      number: i + 1,
-      answered: answers[q.id] !== undefined,
-      current: i === index,
-    }));
-    return { items, answered: items.filter((item) => item.answered).length };
-  }, [answers, index, questions]);
+  const answeredIndexes = useMemo(() => {
+    const next = new Set<number>();
+    questions.forEach((question, i) => {
+      if (answers[question.id] !== undefined) next.add(i);
+    });
+    return next;
+  }, [answers, questions]);
 
   if (!loaded) {
     return (
@@ -477,7 +479,8 @@ export default function Quiz() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.column, { maxWidth: maxContentWidth }]}>
+        <View style={[styles.top, { paddingTop: insets.top + 8, paddingHorizontal: gutter }]}>
         <PressableScale onPress={close} scaleTo={0.9} accessibilityLabel="Хаах">
           <View style={styles.topBtn}>
             <Icon name="close" size={16} color={colors.muted} />
@@ -495,7 +498,7 @@ export default function Quiz() {
         </View>
       </View>
 
-      <View style={styles.controlRow}>
+      <View style={[styles.controlRow, { paddingHorizontal: gutter }]}>
         <View style={{ flex: 1 }}>
           <ProgressBar progress={(index + 1) / questions.length} height={4} />
         </View>
@@ -517,8 +520,9 @@ export default function Quiz() {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 152 }]}
+        contentContainerStyle={[styles.scroll, { paddingHorizontal: gutter, paddingBottom: insets.bottom + 152 }]}
       >
+        <View style={[styles.readingColumn, { maxWidth: readingMaxWidth }]}>
         <Animated.View key={current.id} entering={FadeInDown.duration(260)}>
           <View style={styles.metaRow}>
             <Tag text={`Асуулт ${index + 1}`} />
@@ -531,7 +535,7 @@ export default function Quiz() {
             </PressableScale>
           </View>
 
-          <Text style={styles.question}>{current.question}</Text>
+          <Text style={[styles.question, isTablet && styles.questionTablet]}>{current.question}</Text>
 
           <View style={styles.options}>
             {displayedOrder.map((optionIndex, displayIndex) => (
@@ -587,7 +591,10 @@ export default function Quiz() {
             </View>
           ) : null}
         </Animated.View>
+        </View>
       </ScrollView>
+
+      </View>
 
       <LinearGradient
         colors={["rgba(8,9,11,0)", colors.bg]}
@@ -597,6 +604,7 @@ export default function Quiz() {
         pointerEvents="none"
       />
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[styles.bottomInner, { maxWidth: readingMaxWidth, paddingHorizontal: gutter }]}>
         <View style={styles.bottomRow}>
           <PressableScale onPress={() => jump(index - 1)} disabled={index === 0} scaleTo={0.95}>
             <View style={[styles.prevBtn, index === 0 && { opacity: 0.35 }]}>
@@ -629,11 +637,12 @@ export default function Quiz() {
             <Text style={styles.skipLink}>Алгасах</Text>
           </PressableScale>
         ) : null}
+        </View>
       </View>
 
       {paused ? (
         <View style={styles.pauseOverlay}>
-          <View style={styles.pauseCard}>
+          <View style={[styles.pauseCard, isTablet && styles.pauseCardTablet]}>
             <View style={styles.pauseIconWrap}>
               <View style={styles.pauseIconBig}>
                 <View style={styles.pauseBarBig} />
@@ -653,45 +662,22 @@ export default function Quiz() {
         </View>
       ) : null}
 
-      <Modal visible={navOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setNavOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setNavOpen(false)} accessibilityLabel="Хаах" />
-          <View style={styles.navCard}>
-            <View style={styles.navHead}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.navTitle}>Сорилгууд</Text>
-                <Text style={styles.navMeta}>✓ {nav.answered} / {questions.length} хариулсан</Text>
-              </View>
-              <PressableScale onPress={() => setNavOpen(false)} scaleTo={0.9}>
-                <View style={styles.modalClose}>
-                  <Icon name="close" size={14} color={colors.muted} />
-                </View>
-              </PressableScale>
-            </View>
-            <ScrollView style={styles.navScroll} showsVerticalScrollIndicator={false}>
-              <View style={styles.navGrid}>
-                {nav.items.map((item) => (
-                  <PressableScale key={item.id} onPress={() => jump(item.number - 1)} scaleTo={0.9} style={styles.navCell}>
-                    <View style={[styles.navNumber, item.answered && styles.navAnswered, item.current && styles.navCurrent]}>
-                      <Text style={[styles.navNumberText, item.answered && { color: colors.white }]}>{item.number}</Text>
-                    </View>
-                  </PressableScale>
-                ))}
-              </View>
-            </ScrollView>
-            <View style={styles.legend}>
-              <Legend color={colors.emerald} label="Хариулсан" />
-              <Legend color={colors.lilac} label="Одоогийн" />
-              <Legend color="rgba(255,255,255,0.16)" label={`Үлдсэн · ${questions.length - nav.answered}`} />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <QuestionGridModal
+        visible={navOpen}
+        onClose={() => setNavOpen(false)}
+        title="Сорилгууд"
+        meta={`✓ ${answeredIndexes.size} / ${questions.length} хариулсан`}
+        metaAccent={answeredIndexes.size > 0}
+        total={questions.length}
+        currentIndex={index}
+        answeredIndexes={answeredIndexes}
+        onSelect={(next) => jump(next)}
+      />
 
       <Modal visible={exitConfirm} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setExitConfirm(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setExitConfirm(false)} accessibilityLabel="Хаах" />
-          <View style={styles.exitCard}>
+          <View style={[styles.exitCard, isTablet && styles.exitCardTablet]}>
             <Text style={styles.exitTitle}>Шалгалтыг түр зогсоох уу?</Text>
             <Text style={styles.exitText}>Хариултууд хадгалагдаж, явсан газраасаа үргэлжлүүлнэ.</Text>
             <PressableScale onPress={() => setExitConfirm(false)} scaleTo={0.98}>
@@ -717,17 +703,10 @@ export default function Quiz() {
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendText}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  column: { flex: 1, width: "100%", alignSelf: "center" },
+  readingColumn: { width: "100%", alignSelf: "center" },
   center: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 30 },
   loadingText: { fontFamily: fonts.body, fontSize: 12, color: colors.dim },
   emptyIcon: {
@@ -818,6 +797,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     letterSpacing: -0.2,
   },
+  questionTablet: { fontSize: 21, lineHeight: 31 },
   options: { gap: 10 },
   feedback: { marginTop: 16, padding: 14, borderRadius: 16, borderWidth: 1, backgroundColor: "rgba(255,255,255,0.035)" },
   feedbackHead: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -842,7 +822,8 @@ const styles = StyleSheet.create({
   },
   examHintText: { flex: 1, fontFamily: fonts.body, fontSize: 9.5, lineHeight: 14, color: colors.dim },
   bottomFade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 130 },
-  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 8 },
+  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center", paddingTop: 8 },
+  bottomInner: { width: "100%", alignSelf: "center" },
   bottomRow: { flexDirection: "row", alignItems: "center", gap: 9 },
   prevBtn: {
     height: 52,
@@ -879,6 +860,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   pauseCard: { width: "100%", maxWidth: 340, alignItems: "center" },
+  pauseCardTablet: { maxWidth: 400 },
   pauseIconWrap: {
     width: 64,
     height: 64,
@@ -912,57 +894,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
   },
-  navCard: {
-    width: "100%",
-    maxWidth: 420,
-    maxHeight: "76%",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "#101018",
-    padding: 16,
-  },
-  navHead: { flexDirection: "row", alignItems: "center", gap: 10 },
-  navTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.text },
-  navMeta: { fontFamily: fonts.body, fontSize: 9.5, color: colors.emerald, marginTop: 3 },
-  modalClose: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-  },
-  navScroll: { marginTop: 14 },
-  navGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 7 },
-  navCell: { width: "18.4%", alignItems: "center" },
-  navNumber: {
-    width: "100%",
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    backgroundColor: "rgba(255,255,255,0.025)",
-  },
-  navAnswered: { backgroundColor: "rgba(52,211,153,0.20)", borderColor: "rgba(52,211,153,0.38)" },
-  navCurrent: { borderColor: colors.lilac, borderWidth: 1.5 },
-  navNumberText: { fontFamily: fonts.bodySemi, fontSize: 10.5, color: colors.muted },
-  legend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.06)",
-  },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 8, height: 8, borderRadius: 2 },
-  legendText: { fontFamily: fonts.body, fontSize: 8.5, color: colors.dim },
   exitCard: {
     width: "100%",
     maxWidth: 360,
@@ -972,6 +903,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#101018",
     padding: 20,
   },
+  exitCardTablet: { maxWidth: 420, padding: 24 },
   exitTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.text },
   exitText: { fontFamily: fonts.body, fontSize: 10.5, lineHeight: 16, color: colors.dim, marginTop: 6, marginBottom: 14 },
   exitGhost: {

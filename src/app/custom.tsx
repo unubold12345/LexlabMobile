@@ -215,7 +215,7 @@ export default function Custom() {
       <SectionHeader title="Ангиллаар сонгох" caption="Тоон дээр дарвал бүх сорилгыг авна" />
       <View style={styles.mainList}>
         {byMain.map((group, index) => {
-          const isOpen = open[group.main] ?? index === 0;
+          const isOpen = open[group.main] ?? false;
           return (
             <Reveal key={group.main} delay={120 + index * 30}>
               <GlassCard>

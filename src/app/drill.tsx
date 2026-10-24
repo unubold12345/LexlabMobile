@@ -58,10 +58,6 @@ export default function Drill() {
       .filter((m) => (q ? m.subs.length > 0 : true));
   }, [bank.mains, query, filter]);
 
-  useEffect(() => {
-    if (!expanded && visible.length > 0) setExpanded(visible[0].name);
-  }, [visible, expanded]);
-
   const totalAnswered = Object.keys(progress.answered).length;
 
   return (

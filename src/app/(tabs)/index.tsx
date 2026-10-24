@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { useBank } from "@/lib/bank";
 import { useProgress } from "@/lib/progress";
+import { useResponsive } from "@/lib/responsive";
 import { greeting, relativeDay } from "@/lib/format";
 import { colors, fonts, radii } from "@/lib/theme";
 
@@ -32,6 +33,9 @@ export default function Home() {
   const bank = useBank();
   const progress = useProgress();
   const router = useRouter();
+  const { width, gutter, maxContentWidth, isTablet, columns } = useResponsive();
+  const gridWidth = Math.min(width, maxContentWidth) - gutter * 2;
+  const subjectCardWidth = Math.floor((gridWidth - 12 * (columns - 1)) / columns);
 
   const heroMain = bank.mains[0];
   const answeredInMain = useMemo(() => {
@@ -49,6 +53,39 @@ export default function Home() {
   const startQuiz = (main: string, mode: "practice" | "exam", count = 10) => {
     router.push({ pathname: "/quiz", params: { main, count: String(count), mode } });
   };
+
+  const subjectCards = bank.mains.map((main, i) => {
+    const answered = bank.questions.reduce(
+      (n, q) => n + (q.category === main.name && progress.answered[q.id] ? 1 : 0),
+      0
+    );
+    const tint = SUBJECT_TINTS[i % SUBJECT_TINTS.length];
+    return (
+      <Reveal
+        key={main.name}
+        delay={80 + i * 50}
+        style={isTablet ? { width: subjectCardWidth } : undefined}
+      >
+        <PressableScale onPress={() => startQuiz(main.name, "practice", 10)}>
+          <GlassCard style={[styles.subjectCard, isTablet && styles.subjectCardTablet]}>
+            <View style={[styles.subjectIcon, { backgroundColor: `${tint}1c`, borderColor: `${tint}30` }]}>
+              <Text style={[styles.subjectLetter, { color: tint }]}>{shortName(main.name).charAt(0)}</Text>
+            </View>
+            <Text numberOfLines={2} style={styles.subjectName}>
+              {shortName(main.name)}
+            </Text>
+            <Text style={styles.subjectCount}>{main.total.toLocaleString()} асуулт</Text>
+            <View style={styles.subjectProgress}>
+              <View style={{ flex: 1 }}>
+                <ProgressBar progress={answered / Math.max(1, main.total)} height={4} from={tint} to={tint} />
+              </View>
+              <Text style={styles.subjectPct}>{Math.round((answered / Math.max(1, main.total)) * 100)}%</Text>
+            </View>
+          </GlassCard>
+        </PressableScale>
+      </Reveal>
+    );
+  });
 
   return (
     <Screen>
@@ -97,7 +134,7 @@ export default function Home() {
       </Reveal>
 
       <Reveal delay={70}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isTablet && styles.heroTablet]}>
           <LinearGradient
             colors={["#3B4048", "#23262C", "#16181C"]}
             start={{ x: 0, y: 0 }}
@@ -106,12 +143,12 @@ export default function Home() {
           />
           <View style={styles.heroGlowA} />
           <View style={styles.heroGlowB} />
-          <View style={styles.heroBody}>
+          <View style={[styles.heroBody, isTablet && styles.heroBodyTablet]}>
             <View style={styles.heroTag}>
               <Icon name="sparkles" size={11} color="#E5E7EB" strokeWidth={2} />
               <Text style={styles.heroTagText}>ӨНӨӨДРИЙН ФОКУС</Text>
             </View>
-            <Text numberOfLines={2} style={styles.heroTitle}>
+            <Text numberOfLines={2} style={[styles.heroTitle, isTablet && styles.heroTitleTablet]}>
               {shortName(heroMain?.name ?? "Нийтийн эрх зүй")}
             </Text>
             <Text style={styles.heroMeta}>
@@ -129,8 +166,8 @@ export default function Home() {
           </View>
           <View style={styles.heroRing}>
             <ProgressRing
-              size={94}
-              stroke={7}
+              size={isTablet ? 120 : 94}
+              stroke={isTablet ? 8 : 7}
               progress={heroCoverage}
               from="#FFFFFF"
               to="#FBCFE8"
@@ -150,40 +187,17 @@ export default function Home() {
       </View>
 
       <SectionHeader title="Сэдвүүд" caption="Үргэлжлүүлэх эсвэл шинээр эхлэх" action="Бүгд" onAction={() => router.push("/subjects")} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.subjectScroll}
-      >
-        {bank.mains.map((main, i) => {
-          const answered = bank.questions.reduce(
-            (n, q) => n + (q.category === main.name && progress.answered[q.id] ? 1 : 0),
-            0
-          );
-          const tint = SUBJECT_TINTS[i % SUBJECT_TINTS.length];
-          return (
-            <Reveal key={main.name} delay={80 + i * 50}>
-              <PressableScale onPress={() => startQuiz(main.name, "practice", 10)}>
-                <GlassCard style={styles.subjectCard}>
-                  <View style={[styles.subjectIcon, { backgroundColor: `${tint}1c`, borderColor: `${tint}30` }]}>
-                    <Text style={[styles.subjectLetter, { color: tint }]}>{shortName(main.name).charAt(0)}</Text>
-                  </View>
-                  <Text numberOfLines={2} style={styles.subjectName}>
-                    {shortName(main.name)}
-                  </Text>
-                  <Text style={styles.subjectCount}>{main.total.toLocaleString()} асуулт</Text>
-                  <View style={styles.subjectProgress}>
-                    <View style={{ flex: 1 }}>
-                      <ProgressBar progress={answered / Math.max(1, main.total)} height={4} from={tint} to={tint} />
-                    </View>
-                    <Text style={styles.subjectPct}>{Math.round((answered / Math.max(1, main.total)) * 100)}%</Text>
-                  </View>
-                </GlassCard>
-              </PressableScale>
-            </Reveal>
-          );
-        })}
-      </ScrollView>
+      {isTablet ? (
+        <View style={styles.subjectGrid}>{subjectCards}</View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subjectScroll}
+        >
+          {subjectCards}
+        </ScrollView>
+      )}
 
       <SectionHeader title="Долоо хоногийн идэвх" caption="Сүүлийн 7 хоногийн дасгал" />
       <Reveal delay={80}>
@@ -257,12 +271,16 @@ export default function Home() {
       {latest.length === 0 ? (
         <EmptyNote text="Эхний дасгалаа хийгээд явцаа эндээс хянаарай." />
       ) : (
-        <View style={{ gap: 10 }}>
+        <View style={[styles.historyList, isTablet && styles.historyListTablet]}>
           {latest.map((item, i) => {
             const pct = Math.round((item.correct / Math.max(1, item.total)) * 100);
             const tint = pct >= 70 ? colors.emerald : pct >= 40 ? colors.amber : colors.rose;
             return (
-              <Reveal key={item.id} delay={60 + i * 60}>
+              <Reveal
+                key={item.id}
+                delay={60 + i * 60}
+                style={isTablet ? { width: (gridWidth - 10) / 2 } : undefined}
+              >
                 <GlassCard style={styles.historyRow}>
                   <View style={[styles.historyRing, { borderColor: `${tint}55` }]}>
                     <Text style={[styles.historyPct, { color: tint }]}>{pct}%</Text>
@@ -379,6 +397,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 14 },
     elevation: 12,
   },
+  heroTablet: { padding: 28, minHeight: 236 },
+  heroBodyTablet: { paddingRight: 24 },
   heroGlowA: {
     position: "absolute",
     width: 220,
@@ -401,6 +421,7 @@ const styles = StyleSheet.create({
   heroTag: { flexDirection: "row", alignItems: "center", gap: 5 },
   heroTagText: { fontFamily: fonts.bodyBold, fontSize: 8.5, letterSpacing: 1.6, color: "rgba(255,255,255,0.78)" },
   heroTitle: { fontFamily: fonts.display, fontSize: 22.5, color: colors.white, letterSpacing: -0.6, lineHeight: 28, marginTop: 10, maxWidth: 200 },
+  heroTitleTablet: { fontSize: 30, lineHeight: 38, maxWidth: 560 },
   heroMeta: { fontFamily: fonts.body, fontSize: 11.5, color: "rgba(255,255,255,0.66)", marginTop: 7 },
   heroBottom: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
   heroBtn: {
@@ -421,7 +442,9 @@ const styles = StyleSheet.create({
   heroRingLabel: { fontFamily: fonts.body, fontSize: 8.5, color: "rgba(255,255,255,0.66)", marginTop: 1 },
   statsRow: { flexDirection: "row", gap: 10, marginTop: 16 },
   subjectScroll: { gap: 12, paddingRight: 20 },
+  subjectGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   subjectCard: { width: 156, padding: 14, minHeight: 146 },
+  subjectCardTablet: { width: "100%", minHeight: 164, padding: 18 },
   subjectIcon: { width: 34, height: 34, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   subjectLetter: { fontFamily: fonts.display, fontSize: 15 },
   subjectName: { fontFamily: fonts.bodySemi, fontSize: 13.2, color: colors.text, lineHeight: 18, marginTop: 12, minHeight: 36 },
@@ -444,6 +467,8 @@ const styles = StyleSheet.create({
   examTitle: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.text },
   examMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.muted, marginTop: 3 },
   examArrow: { width: 34, height: 34, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" },
+  historyList: { gap: 10 },
+  historyListTablet: { flexDirection: "row", flexWrap: "wrap" },
   historyRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 13 },
   historyRing: { width: 42, height: 42, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   historyPct: { fontFamily: fonts.display, fontSize: 12 },

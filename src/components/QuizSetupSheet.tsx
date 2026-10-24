@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Modal, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
 import { PressableScale } from "@/components/ui";
+import { useResponsive } from "@/lib/responsive";
 import { colors, fonts, radii } from "@/lib/theme";
 import type { QuizMode } from "@/lib/types";
 
@@ -11,10 +12,82 @@ function shortName(name: string): string {
   return name.replace(/^\d+\.\s+/, "");
 }
 
-function countOptions(total: number): number[] {
-  const capped = Math.min(30, Math.max(0, total));
-  if (capped === 0) return [];
-  return Array.from(new Set([5, 10, 20, 30].filter((n) => n < capped).concat(capped))).sort((a, b) => a - b);
+const THUMB_SIZE = 22;
+
+function CountSlider({
+  value,
+  max,
+  onChange,
+}: {
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  const [width, setWidth] = useState(0);
+  const widthRef = useRef(0);
+  const maxRef = useRef(max);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    maxRef.current = max;
+  }, [max]);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const changeFromX = (x: number) => {
+    const track = widthRef.current;
+    if (track <= 0) return;
+    const usable = Math.max(0, track - THUMB_SIZE);
+    const ratio = Math.max(0, Math.min(1, (x - THUMB_SIZE / 2) / Math.max(1, usable)));
+    onChangeRef.current(Math.round(ratio * maxRef.current));
+  };
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (event) => changeFromX(event.nativeEvent.locationX),
+      onPanResponderMove: (event) => changeFromX(event.nativeEvent.locationX),
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+    })
+  ).current;
+
+  const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+  const usable = Math.max(0, width - THUMB_SIZE);
+
+  return (
+    <>
+      <View
+        style={styles.sliderHit}
+        onLayout={(event) => {
+          const nextWidth = event.nativeEvent.layout.width;
+          widthRef.current = nextWidth;
+          setWidth(nextWidth);
+        }}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel="Асуултын тоо"
+        accessibilityValue={{ min: 0, max, now: value }}
+        accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+        onAccessibilityAction={(event) => {
+          const next = event.nativeEvent.actionName === "increment" ? value + 1 : value - 1;
+          onChange(Math.max(0, Math.min(max, next)));
+        }}
+        {...responder.panHandlers}
+      >
+        <View pointerEvents="none" style={styles.sliderRail} />
+        <View pointerEvents="none" style={[styles.sliderFill, { width: ratio * usable }]} />
+        <View pointerEvents="none" style={[styles.sliderThumb, { left: ratio * usable }]} />
+      </View>
+      <View style={styles.sliderScale}>
+        <Text style={styles.sliderScaleText}>0</Text>
+        <Text style={styles.sliderScaleText}>{max.toLocaleString()}</Text>
+      </View>
+    </>
+  );
 }
 
 export function QuizSetupSheet({
@@ -35,14 +108,14 @@ export function QuizSetupSheet({
   onStart: (mode: QuizMode, count: number) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const options = useMemo(() => countOptions(total), [total]);
+  const { isTablet } = useResponsive();
   const [mode, setMode] = useState<QuizMode>(initialMode);
-  const [count, setCount] = useState(Math.min(10, Math.max(1, total)));
+  const [count, setCount] = useState(Math.min(10, Math.max(0, total)));
 
   useEffect(() => {
     if (!visible) return;
     setMode(initialMode);
-    setCount(Math.min(10, Math.max(1, total)));
+    setCount(Math.min(10, Math.max(0, total)));
   }, [visible, initialMode, total]);
 
   const title = sub ? sub : main === "all" ? "Бүх сэдэв" : shortName(main);
@@ -51,7 +124,17 @@ export function QuizSetupSheet({
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Хаах" />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 18 }]}>
+        <View
+          style={[
+            styles.sheet,
+            isTablet && styles.sheetTablet,
+            {
+              paddingBottom: isTablet ? 24 : insets.bottom + 18,
+              marginBottom: isTablet ? Math.max(24, insets.bottom + 10) : 0,
+              maxWidth: isTablet ? 640 : undefined,
+            },
+          ]}
+        >
           <View style={styles.handle} />
           <View style={styles.head}>
             <View style={{ flex: 1 }}>
@@ -88,18 +171,20 @@ export function QuizSetupSheet({
             />
           </View>
 
-          <Text style={styles.label}>АСУУЛТЫН ТОО</Text>
-          <View style={styles.countRow}>
-            {options.map((n) => (
-              <PressableScale key={n} onPress={() => setCount(n)} scaleTo={0.95} style={{ flex: 1 }}>
-                <View style={[styles.countBtn, count === n && styles.countActive]}>
-                  <Text style={[styles.countText, count === n && styles.countTextActive]}>{n}</Text>
-                </View>
-              </PressableScale>
-            ))}
+          <View style={styles.countHeader}>
+            <Text style={styles.labelInline}>АСУУЛТЫН ТОО</Text>
+            <Text style={styles.countValue}>
+              {count.toLocaleString()} <Text style={styles.countValueDim}>/ {total.toLocaleString()}</Text>
+            </Text>
           </View>
+          <CountSlider value={count} max={total} onChange={setCount} />
 
-          <PressableScale onPress={() => onStart(mode, count)} scaleTo={0.97}>
+          <PressableScale
+            onPress={() => onStart(mode, count)}
+            disabled={count <= 0}
+            scaleTo={0.97}
+            style={count <= 0 ? styles.startDisabled : undefined}
+          >
             <LinearGradient
               colors={["#4F5763", "#30353D"]}
               start={{ x: 0, y: 0 }}
@@ -107,7 +192,9 @@ export function QuizSetupSheet({
               style={styles.start}
             >
               <Icon name="play" size={16} color={colors.white} strokeWidth={2.4} />
-              <Text style={styles.startText}>{count} асуултаар эхлэх</Text>
+              <Text style={styles.startText}>
+                {count > 0 ? `${count.toLocaleString()} асуултаар эхлэх` : "Асуултын тоо сонгоно уу"}
+              </Text>
               <Icon name="arrowRight" size={16} color={colors.white} />
             </LinearGradient>
           </PressableScale>
@@ -171,6 +258,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -12 },
     elevation: 22,
   },
+  sheetTablet: {
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 26,
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
   handle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.18)" },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 18 },
   eyebrow: { fontFamily: fonts.bodyBold, fontSize: 8.5, letterSpacing: 1.8, color: colors.lilac },
@@ -198,19 +293,17 @@ const styles = StyleSheet.create({
   radio: { width: 15, height: 15, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
   radioActive: { borderColor: colors.lilac },
   radioDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.lilac },
-  countRow: { flexDirection: "row", gap: 8 },
-  countBtn: {
-    height: 46,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: "rgba(255,255,255,0.035)",
-  },
-  countActive: { borderColor: "rgba(255,255,255,0.24)", backgroundColor: "rgba(255,255,255,0.10)" },
-  countText: { fontFamily: fonts.display, fontSize: 16, color: colors.muted },
-  countTextActive: { color: colors.white },
+  countHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: 22, marginBottom: 2 },
+  labelInline: { fontFamily: fonts.bodyBold, fontSize: 8.5, letterSpacing: 1.5, color: colors.dim },
+  countValue: { fontFamily: fonts.display, fontSize: 18, color: colors.text },
+  countValueDim: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.dim },
+  sliderHit: { height: 44, justifyContent: "center", marginTop: 2 },
+  sliderRail: { position: "absolute", left: THUMB_SIZE / 2, right: THUMB_SIZE / 2, top: 19.5, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.10)" },
+  sliderFill: { position: "absolute", left: THUMB_SIZE / 2, top: 19.5, height: 5, borderRadius: 3, backgroundColor: colors.lilac },
+  sliderThumb: { position: "absolute", top: 11, width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: THUMB_SIZE / 2, borderWidth: 3, borderColor: "#101018", backgroundColor: colors.text },
+  sliderScale: { flexDirection: "row", justifyContent: "space-between", marginTop: -2 },
+  sliderScaleText: { fontFamily: fonts.body, fontSize: 9.5, color: colors.dim },
+  startDisabled: { opacity: 0.45 },
   start: {
     height: 54,
     borderRadius: 16,

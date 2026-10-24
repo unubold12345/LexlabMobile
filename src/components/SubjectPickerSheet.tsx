@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
 import { PressableScale } from "@/components/ui";
 import { useBank } from "@/lib/bank";
+import { useResponsive } from "@/lib/responsive";
 import { colors, fonts, radii } from "@/lib/theme";
 
 const TINTS = ["#CDD2DA"];
@@ -33,9 +34,17 @@ export function SubjectPickerSheet({
   title?: string;
 }) {
   const insets = useSafeAreaInsets();
+  const { isTablet } = useResponsive();
   const bank = useBank();
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!visible) {
+      setExpanded({});
+      setQuery("");
+    }
+  }, [visible]);
 
   const groups = useMemo<Group[]>(() => {
     const needle = query.trim().toLowerCase();
@@ -67,7 +76,18 @@ export function SubjectPickerSheet({
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Хаах" />
-        <View style={[styles.sheet, { paddingTop: insets.top > 0 ? insets.top + 8 : 18 }]}>
+        <View
+          style={[
+            styles.sheet,
+            isTablet && styles.sheetTablet,
+            {
+              paddingTop: isTablet ? Math.max(insets.top, 18) : insets.top > 0 ? insets.top + 8 : 18,
+              marginTop: isTablet ? Math.max(insets.top + 56, 72) : 38,
+              marginBottom: isTablet ? Math.max(24, insets.bottom) : 0,
+              maxWidth: isTablet ? 760 : undefined,
+            },
+          ]}
+        >
           <View style={styles.head}>
             <View style={{ flex: 1 }}>
               <Text style={styles.eyebrow}>{eyebrow}</Text>
@@ -124,10 +144,10 @@ export function SubjectPickerSheet({
             ) : null}
 
             {groups.map((group) => {
-              const open = query.trim().length > 0 || (expanded[group.main] ?? group.main === groups[0]?.main);
+              const open = query.trim().length > 0 || !!expanded[group.main];
               return (
                 <View key={group.main} style={styles.group}>
-                  <Pressable onPress={() => setExpanded((prev) => ({ ...prev, [group.main]: !prev[group.main] }))}>
+                  <Pressable onPress={() => setExpanded((prev) => ({ ...prev, [group.main]: !open }))}>
                     <View style={styles.groupHead}>
                       <View style={[styles.groupIcon, { backgroundColor: `${group.tint}1F`, borderColor: `${group.tint}45` }]}>
                         <Icon name="book" size={15} color={group.tint} />
@@ -194,6 +214,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.1)",
     backgroundColor: "#0C0C13",
     paddingHorizontal: 20,
+  },
+  sheetTablet: {
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   head: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10 },
   eyebrow: { fontFamily: fonts.bodyBold, fontSize: 8.5, letterSpacing: 1.8, color: colors.lilac },

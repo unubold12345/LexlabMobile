@@ -7,6 +7,7 @@ import { Icon, IconName } from "@/components/Icon";
 import { PressableScale, Reveal } from "@/components/ui";
 import { useBank } from "@/lib/bank";
 import { useProgress } from "@/lib/progress";
+import { useResponsive } from "@/lib/responsive";
 import { colors, fonts } from "@/lib/theme";
 
 type Mode = {
@@ -54,10 +55,18 @@ export default function Practice() {
   const bank = useBank();
   const progress = useProgress();
   const wrongCount = Object.keys(progress.wrong).length;
+  const { width, gutter, maxContentWidth, isTablet } = useResponsive();
+  const contentWidth = Math.min(width, maxContentWidth) - gutter * 2;
+  const cellWidth = (contentWidth - 10) / 2;
 
   return (
     <Screen scroll={false}>
-      <View style={[styles.content, { paddingBottom: insets.bottom + 104 }]}>
+      <View
+        style={[
+          styles.content,
+          { paddingHorizontal: gutter, paddingBottom: insets.bottom + 104 },
+        ]}
+      >
         <Reveal delay={60}>
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
@@ -87,22 +96,26 @@ export default function Practice() {
           </View>
         </Reveal>
 
-        <View style={styles.grid}>
+        <View style={[styles.grid, isTablet && styles.gridTablet]}>
           {MODES.map((mode, index) => (
-            <Reveal key={mode.key} delay={90 + index * 55} style={styles.cell}>
+            <Reveal
+              key={mode.key}
+              delay={90 + index * 55}
+              style={[styles.cell, isTablet && styles.cellTablet, isTablet && { width: cellWidth }]}
+            >
               <PressableScale
                 onPress={() => router.push(mode.route)}
                 style={styles.cell}
                 contentStyle={styles.cell}
                 accessibilityLabel={mode.title}
               >
-                <View style={styles.tile}>
-                  <View style={styles.iconWrap}>
-                    <Icon name={mode.icon} size={26} color={colors.lilac} strokeWidth={1.6} />
+                <View style={[styles.tile, isTablet && styles.tileTablet]}>
+                  <View style={[styles.iconWrap, isTablet && styles.iconWrapTablet]}>
+                    <Icon name={mode.icon} size={isTablet ? 30 : 26} color={colors.lilac} strokeWidth={1.6} />
                   </View>
                   <View style={styles.copy}>
-                    <Text style={styles.title}>{mode.title}</Text>
-                    <Text numberOfLines={2} style={styles.desc}>
+                    <Text style={[styles.title, isTablet && styles.titleTablet]}>{mode.title}</Text>
+                    <Text numberOfLines={2} style={[styles.desc, isTablet && styles.descTablet]}>
                       {mode.desc}
                     </Text>
                   </View>
@@ -127,7 +140,7 @@ export default function Practice() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, paddingHorizontal: 20 },
+  content: { flex: 1 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 18 },
   metaItem: { gap: 2 },
   metaValue: { fontFamily: fonts.display, fontSize: 16, color: colors.text },
@@ -147,7 +160,9 @@ const styles = StyleSheet.create({
   syncDot: { width: 5, height: 5, borderRadius: 3 },
   syncText: { fontFamily: fonts.bodySemi, fontSize: 10, color: colors.muted },
   grid: { flex: 1, gap: 10, marginTop: 18 },
-  cell: { flex: 1, minHeight: 88 },
+  gridTablet: { flexDirection: "row", flexWrap: "wrap" },
+  cell: { flexGrow: 1, flexBasis: 0, minHeight: 88 },
+  cellTablet: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", height: "48%", minHeight: 176 },
   tile: {
     flex: 1,
     flexDirection: "row",
@@ -160,6 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.042)",
     overflow: "hidden",
   },
+  tileTablet: { paddingHorizontal: 22 },
   iconWrap: {
     width: 50,
     height: 50,
@@ -170,9 +186,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.09)",
   },
+  iconWrapTablet: { width: 58, height: 58, borderRadius: 19 },
   copy: { flex: 1, minWidth: 0 },
   title: { fontFamily: fonts.display, fontSize: 19, color: colors.text, letterSpacing: -0.4 },
+  titleTablet: { fontSize: 22 },
   desc: { fontFamily: fonts.body, fontSize: 10, lineHeight: 15, color: colors.dim, marginTop: 4 },
+  descTablet: { fontSize: 11.5, lineHeight: 17, marginTop: 6 },
   arrow: {
     width: 32,
     height: 32,

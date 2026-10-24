@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { useProgress } from "@/lib/progress";
 import { useAuth } from "@/lib/auth";
+import { useResponsive } from "@/lib/responsive";
 import { colors, fonts, radii } from "@/lib/theme";
 
 export default function Profile() {
@@ -29,6 +30,10 @@ export default function Profile() {
   const levelPct = progress.levelInto / Math.max(1, progress.levelSpan);
   const signedIn = !!auth.user;
   const hasFull = auth.user?.role === "ADMIN" || !!auth.user?.paidAt || !!auth.user?.hasPaid;
+  const { width, gutter, maxContentWidth, isTablet } = useResponsive();
+  const contentWidth = Math.min(width, maxContentWidth) - gutter * 2;
+  const achColumns = isTablet ? (contentWidth >= 660 ? 6 : 4) : 3;
+  const achCellWidth = (contentWidth - 9 * (achColumns - 1)) / achColumns;
 
   const saveName = async () => {
     if (!signedIn || nameSaving) return;
@@ -174,10 +179,15 @@ export default function Profile() {
       </Reveal>
 
       <Reveal delay={80}>
-        <GlassCard style={styles.profileCard}>
+        <GlassCard style={[styles.profileCard, isTablet && styles.profileCardTablet]}>
           <View style={styles.profileTop}>
-            <LinearGradient colors={["#5D6470", "#343A43"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
+            <LinearGradient
+              colors={["#5D6470", "#343A43"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.avatar, isTablet && styles.avatarTablet]}
+            >
+              <Text style={[styles.avatarText, isTablet && styles.avatarTextTablet]}>{initial}</Text>
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
@@ -189,7 +199,7 @@ export default function Profile() {
                   }}
                   onBlur={() => void saveName()}
                   onSubmitEditing={() => void saveName()}
-                  style={styles.nameInput}
+                  style={[styles.nameInput, isTablet && styles.nameInputTablet]}
                   selectionColor={colors.violet}
                   maxLength={24}
                   placeholder="Таны нэр"
@@ -224,12 +234,12 @@ export default function Profile() {
         </GlassCard>
       </Reveal>
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statsRow}>
+      <View style={[styles.statsGrid, isTablet && styles.statsGridTablet]}>
+        <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
           <StatTile icon="target" value={`${progress.accuracyPct}%`} label="Нарийвчлал" tint={colors.lilac} delay={70} />
           <StatTile icon="check" value={`${progress.correct}`} label="Зөв хариулт" tint={colors.lilac} delay={110} />
         </View>
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
           <StatTile icon="layers" value={`${progress.sessions}`} label="Дасгал" tint={colors.lilac} delay={150} />
           <StatTile icon="clock" value={`${progress.minutes}`} label="Минут" tint={colors.lilac} delay={190} />
         </View>
@@ -238,7 +248,11 @@ export default function Profile() {
       <SectionHeader title="Амжилтууд" caption={`${achievements.filter((a) => a.unlocked).length} / ${achievements.length} нээгдсэн`} />
       <View style={styles.achGrid}>
         {achievements.map((a, i) => (
-          <Reveal key={a.title} delay={50 + i * 45} style={styles.achCell}>
+          <Reveal
+            key={a.title}
+            delay={50 + i * 45}
+            style={[styles.achCell, isTablet && { width: achCellWidth }]}
+          >
             <View style={[styles.ach, !a.unlocked && styles.achLocked]}>
               <View style={[styles.achIcon, { backgroundColor: `${a.tint}16`, borderColor: `${a.tint}2e` }]}>
                 <Icon name={a.icon} size={18} color={a.unlocked ? a.tint : colors.dim} />
@@ -493,11 +507,15 @@ const styles = StyleSheet.create({
   loginButtonText: { fontFamily: fonts.bodyBold, fontSize: 12.8, color: colors.white },
   guestHint: { fontFamily: fonts.body, fontSize: 9, color: colors.dim, textAlign: "center", marginTop: 9 },
   profileCard: { marginTop: 10, padding: 18 },
+  profileCardTablet: { padding: 22 },
   profileTop: { flexDirection: "row", alignItems: "center", gap: 13 },
   avatar: { width: 62, height: 62, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  avatarTablet: { width: 74, height: 74, borderRadius: 26 },
   avatarText: { fontFamily: fonts.display, fontSize: 24, color: colors.white },
+  avatarTextTablet: { fontSize: 28 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   nameInput: { fontFamily: fonts.display, fontSize: 19, color: colors.text, padding: 0, maxWidth: 170 },
+  nameInputTablet: { fontSize: 22, maxWidth: 340 },
   memberSince: { fontFamily: fonts.body, fontSize: 10.5, color: colors.dim, marginTop: 4 },
   levelBar: { marginTop: 20 },
   levelMeta: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
@@ -505,7 +523,9 @@ const styles = StyleSheet.create({
   levelValue: { fontFamily: fonts.bodySemi, fontSize: 10.5, color: colors.lilac },
   levelTotal: { fontFamily: fonts.body, fontSize: 9.5, color: colors.dim, marginTop: 7, textAlign: "right" },
   statsGrid: { gap: 10, marginTop: 12 },
+  statsGridTablet: { flexDirection: "row" },
   statsRow: { flexDirection: "row", gap: 10 },
+  statsRowTablet: { flex: 1 },
   achGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
   achCell: { width: "31%" },
   ach: { borderRadius: radii.md, borderWidth: 1, borderColor: colors.borderSoft, backgroundColor: colors.card, padding: 12, gap: 6, minHeight: 116 },
